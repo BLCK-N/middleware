@@ -1,0 +1,453 @@
+{
+  "configVersion": "1.0.0",
+  "questions": [
+    {
+      "code": "Q1",
+      "type": "MULTI_SELECT_WITH_PRIMARY",
+      "mandatory": true,
+      "label": "What do you want your money to help you achieve next?",
+      "options": [
+        { "code": "A", "label": "Freedom to live on my own terms" },
+        { "code": "B", "label": "Stability for my family and peace of mind" },
+        { "code": "C", "label": "Growth and expansion" },
+        { "code": "D", "label": "Legacy - I want what I have built to outlive me" },
+        { "code": "E", "label": "Impact - I want to build, give or influence meaningfully" }
+      ]
+    },
+    {
+      "code": "Q2",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "When you think about wealth, what comes to mind first?",
+      "options": [
+        { "code": "A", "label": "Freedom" },
+        { "code": "B", "label": "Stability" },
+        { "code": "C", "label": "Growth" },
+        { "code": "D", "label": "Impact" },
+        { "code": "E", "label": "Legacy" },
+        { "code": "F", "label": "Just being able to get by comfortably" }
+      ]
+    },
+    {
+      "code": "Q3",
+      "type": "MULTI_SELECT",
+      "mandatory": true,
+      "label": "Which of these best describes your current financial stage?",
+      "options": [
+        { "code": "A", "label": "Building stability and structure" },
+        { "code": "B", "label": "Growing income, career or business" },
+        { "code": "C", "label": "Preparing long-term financial plans" },
+        { "code": "D", "label": "Expanding wealth and consolidating assets" },
+        { "code": "E", "label": "Preparing for legacy transfer or succession" },
+        { "code": "F", "label": "Managing multi-generational wealth" }
+      ]
+    },
+    {
+      "code": "Q4",
+      "type": "MULTI_SELECT",
+      "mandatory": true,
+      "label": "What are your primary investment goals?",
+      "options": [
+        { "code": "A", "label": "Capital preservation / safety" },
+        { "code": "B", "label": "Steady income" },
+        { "code": "C", "label": "Medium-term growth" },
+        { "code": "D", "label": "Long-term aggressive growth" },
+        { "code": "E", "label": "FX protection / currency diversification" },
+        { "code": "F", "label": "Legacy building" },
+        { "code": "G", "label": "Wealth transfer and continuity" },
+        { "code": "H", "label": "Impact / giving / family support" }
+      ]
+    },
+    {
+      "code": "Q5",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "If your investment dropped by 10% temporarily, what would you likely do?",
+      "options": [
+        { "code": "A", "label": "Buy more" },
+        { "code": "B", "label": "Stay invested" },
+        { "code": "C", "label": "Reduce exposure" },
+        { "code": "D", "label": "Exit immediately" }
+      ]
+    },
+    {
+      "code": "Q6",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How comfortable are you with market fluctuations?",
+      "options": [
+        { "code": "A", "label": "Very comfortable" },
+        { "code": "B", "label": "Moderately comfortable" },
+        { "code": "C", "label": "Slightly uncomfortable" },
+        { "code": "D", "label": "Not comfortable at all" }
+      ]
+    },
+    {
+      "code": "Q7",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How much loss can you tolerate in a bad market year?",
+      "options": [
+        { "code": "A", "label": "0% - no loss" },
+        { "code": "B", "label": "Up to 5%" },
+        { "code": "C", "label": "Up to 10%" },
+        { "code": "D", "label": "Above 10%" }
+      ]
+    },
+    {
+      "code": "Q8",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "What is your liquidity requirement for these funds?",
+      "options": [
+        { "code": "A", "label": "Very high liquidity - I may need access anytime" },
+        { "code": "B", "label": "Moderate liquidity - I may need access within 6-12 months" },
+        { "code": "C", "label": "Low liquidity - I can leave the funds for 1-3 years" },
+        { "code": "D", "label": "No immediate liquidity need - I can leave the funds for 3+ years" }
+      ]
+    },
+    {
+      "code": "Q9",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How strong is your financial buffer?",
+      "options": [
+        { "code": "A", "label": "Limited buffer - I may need liquidity often" },
+        { "code": "B", "label": "Moderate buffer - I can stay invested" },
+        { "code": "C", "label": "Strong buffer - little need for liquidity" },
+        { "code": "D", "label": "Very strong buffer - I invest for the long game" }
+      ]
+    },
+    {
+      "code": "Q10",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "What is your level of investment experience?",
+      "options": [
+        { "code": "A", "label": "None" },
+        { "code": "B", "label": "Beginner" },
+        { "code": "C", "label": "Moderate" },
+        { "code": "D", "label": "Experienced" }
+      ]
+    },
+    {
+      "code": "Q11",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "What is your approximate annual income?",
+      "options": [
+        { "code": "A", "label": "Below ₦5m" },
+        { "code": "B", "label": "₦5m-₦20m" },
+        { "code": "C", "label": "₦20m-₦40m" },
+        { "code": "D", "label": "₦40m-₦100m" },
+        { "code": "E", "label": "₦100m-₦500m" },
+        { "code": "F", "label": "Above ₦500m" }
+      ]
+    },
+    {
+      "code": "Q12",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How long do you intend to invest the funds being discussed?",
+      "options": [
+        { "code": "A", "label": "Short-term: 0-12 months" },
+        { "code": "B", "label": "Medium-term: 1-3 years" },
+        { "code": "C", "label": "Long-term: 3-5 years" },
+        { "code": "D", "label": "Very long-term: 5+ years" }
+      ]
+    },
+    {
+      "code": "Q13",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "Approximate value of your cash, investments and liquid assets?",
+      "options": [
+        { "code": "A", "label": "Below ₦5m" },
+        { "code": "B", "label": "₦5m-₦50m" },
+        { "code": "C", "label": "₦50m-₦250m" },
+        { "code": "D", "label": "₦250m-₦1bn" },
+        { "code": "E", "label": "Above ₦1bn" }
+      ]
+    },
+    {
+      "code": "Q14",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "Approximate value of your real estate or land holdings?",
+      "options": [
+        { "code": "A", "label": "None" },
+        { "code": "B", "label": "Below ₦50m" },
+        { "code": "C", "label": "₦50m-₦250m" },
+        { "code": "D", "label": "₦250m-₦1bn" },
+        { "code": "E", "label": "Above ₦1bn" }
+      ]
+    },
+    {
+      "code": "Q15",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "Approximate value of your business or income-generating assets?",
+      "options": [
+        { "code": "A", "label": "None" },
+        { "code": "B", "label": "Below ₦50m" },
+        { "code": "C", "label": "₦50m-₦250m" },
+        { "code": "D", "label": "₦250m-₦1bn" },
+        { "code": "E", "label": "Above ₦1bn" }
+      ]
+    },
+    {
+      "code": "Q16",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "Total outstanding debts or financial obligations?",
+      "options": [
+        { "code": "A", "label": "None" },
+        { "code": "B", "label": "Below ₦25m" },
+        { "code": "C", "label": "₦25m-₦100m" },
+        { "code": "D", "label": "₦100m-₦500m" },
+        { "code": "E", "label": "Above ₦500m" }
+      ]
+    },
+    {
+      "code": "Q17",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How do you usually make money or investment decisions?",
+      "options": [
+        { "code": "A", "label": "I research and compare options" },
+        { "code": "B", "label": "I follow my instincts" },
+        { "code": "C", "label": "I seek professional advice" },
+        { "code": "D", "label": "I discuss with family or trusted people" }
+      ]
+    },
+    {
+      "code": "Q18",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How do you prefer updates about your investments?",
+      "options": [
+        { "code": "A", "label": "Speak with an advisor" },
+        { "code": "B", "label": "Use technology / portal / app" },
+        { "code": "C", "label": "Regular updates by email" },
+        { "code": "D", "label": "Only when there is something significant to note" }
+      ]
+    },
+    {
+      "code": "Q19",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "How comfortable are you discussing money or investments?",
+      "options": [
+        { "code": "A", "label": "I am open to talking about it" },
+        { "code": "B", "label": "It depends on who I am talking to" },
+        { "code": "C", "label": "I would rather keep it private" },
+        { "code": "D", "label": "I am learning to be more open about it" }
+      ]
+    },
+    {
+      "code": "Q20",
+      "type": "OPEN_TEXT",
+      "mandatory": true,
+      "label": "What do you wish your advisor understood about you or your money journey?",
+      "options": []
+    },
+    {
+      "code": "Q21",
+      "type": "MULTI_SELECT",
+      "mandatory": true,
+      "label": "What are your sources of funds for this investment?",
+      "options": [
+        { "code": "A", "label": "Salary / employment income" },
+        { "code": "B", "label": "Business income" },
+        { "code": "C", "label": "Rental income" },
+        { "code": "D", "label": "Investment income - dividends, interest, capital gains" },
+        { "code": "E", "label": "Asset sale" },
+        { "code": "F", "label": "Family support / gifts" },
+        { "code": "G", "label": "Diaspora remittance" },
+        { "code": "H", "label": "Others - please specify", "requiresText": true }
+      ]
+    },
+    {
+      "code": "Q22",
+      "type": "SINGLE_SELECT",
+      "mandatory": true,
+      "label": "Are you the ultimate beneficial owner of the funds?",
+      "options": [
+        { "code": "A", "label": "Yes" },
+        { "code": "B", "label": "No", "requiresText": true },
+        { "code": "C", "label": "Acting on behalf of another person / entity - please specify", "requiresText": true }
+      ]
+    }
+  ],
+
+  "personaScoring": {
+    "EVERYDAY_BUILDER": {
+      "Q1.B": 2, "Q1.A": 1,
+      "Q2.F": 3, "Q2.B": 2,
+      "Q3.A": 3, "Q3.B": 1,
+      "Q4.A": 2, "Q4.B": 2
+    },
+    "STRATEGIC_ACHIEVER": {
+      "Q1.C": 3, "Q1.A": 2,
+      "Q2.C": 3, "Q2.A": 2,
+      "Q3.B": 3, "Q3.C": 2, "Q3.D": 3,
+      "Q4.C": 2, "Q4.D": 3, "Q4.E": 2
+    },
+    "LEGACY_PRIVATE_WEALTH": {
+      "Q1.D": 3, "Q1.E": 2,
+      "Q2.E": 3, "Q2.D": 2,
+      "Q3.E": 3, "Q3.F": 4,
+      "Q4.F": 3, "Q4.G": 4, "Q4.H": 2
+    }
+  },
+  "personaRules": {
+    "hybridThreshold": 2,
+    "primaryOptionMultiplier": 1,
+    "netWorthOverride": {
+      "liquidAssetTriggers": ["Q13.D", "Q13.E"],
+      "hardAssetTriggers": ["Q14.D", "Q14.E", "Q15.D", "Q15.E"],
+      "legacyIntentTriggers": ["Q1.D", "Q3.E", "Q3.F", "Q4.F", "Q4.G"]
+    }
+  },
+
+  "riskScoring": {
+    "questionScores": {
+      "Q5":  { "A": 4, "B": 3, "C": 2, "D": 1 },
+      "Q6":  { "A": 4, "B": 3, "C": 2, "D": 1 },
+      "Q7":  { "A": 1, "B": 2, "C": 3, "D": 4 },
+      "Q8":  { "A": 1, "B": 2, "C": 3, "D": 4 },
+      "Q9":  { "A": 1, "B": 2, "C": 3, "D": 4 },
+      "Q10": { "A": 1, "B": 2, "C": 3, "D": 4 },
+      "Q12": { "A": 1, "B": 2, "C": 3, "D": 4 }
+    },
+    "weights": {
+      "Q5": 0.20, "Q6": 0.20, "Q7": 0.20, "Q8": 0.15, "Q9": 0.10, "Q10": 0.05, "Q12": 0.10
+    },
+    "areaNames": {
+      "Q5": "Market Drop Response",
+      "Q6": "Market Fluctuation Comfort",
+      "Q7": "Loss Tolerance",
+      "Q8": "Liquidity Requirement",
+      "Q9": "Financial Buffer",
+      "Q10": "Investment Experience",
+      "Q12": "Investment Horizon"
+    },
+    "bands": [
+      { "maxInclusive": 1.75, "profile": "CONSERVATIVE" },
+      { "maxInclusive": 2.35, "profile": "MODERATE" },
+      { "maxInclusive": 3.00, "profile": "BALANCED" },
+      { "maxInclusive": 3.50, "profile": "GROWTH_ORIENTED" },
+      { "maxInclusive": 4.00, "profile": "AGGRESSIVE" }
+    ],
+    "caps": [
+      { "trigger": "Q7.A",  "maxProfile": "MODERATE",     "reason": "Zero loss tolerance", "advisorOverridable": false },
+      { "trigger": "Q5.D",  "maxProfile": "CONSERVATIVE", "reason": "Exits immediately on a 10% drop", "advisorOverridable": false },
+      { "trigger": "Q8.A",  "maxProfile": "MODERATE",     "reason": "Very high liquidity need", "advisorOverridable": false },
+      { "trigger": "Q10.A", "maxProfile": "BALANCED",     "reason": "No investment experience", "advisorOverridable": false },
+      { "trigger": "Q12.A", "maxProfile": "MODERATE",     "reason": "Short-term investment horizon", "advisorOverridable": true }
+    ],
+    "suitabilityMismatch": {
+      "goalTriggers": ["Q4.D"],
+      "conflictTriggers": ["Q7.A", "Q8.A"]
+    }
+  },
+
+  "liquidity": {
+    "mapping": { "Q8.A": "HIGH", "Q8.B": "MODERATE", "Q8.C": "LOW", "Q8.D": "VERY_LOW" },
+    "flags": [
+      {
+        "code": "HIGH_LIQUIDITY_LONG_TERM_GOAL",
+        "description": "Liquidity need is high, but investment horizon/goal is long-term",
+        "whenLiquidity": ["HIGH"],
+        "andAnyOf": ["Q12.C", "Q12.D"]
+      },
+      {
+        "code": "HIGH_LIQUIDITY_AGGRESSIVE_GOAL",
+        "description": "Liquidity need is high, but client selected long-term aggressive growth",
+        "whenLiquidity": ["HIGH"],
+        "andAnyOf": ["Q4.D"]
+      },
+      {
+        "code": "LIMITED_FINANCIAL_BUFFER",
+        "description": "Financial buffer is limited - client may need liquidity often",
+        "whenLiquidity": [],
+        "andAnyOf": ["Q9.A"]
+      },
+      {
+        "code": "SHORT_INVESTMENT_HORIZON",
+        "description": "Investment horizon is short - long-tenor products require caution",
+        "whenLiquidity": [],
+        "andAnyOf": ["Q12.A"]
+      }
+    ]
+  },
+
+  "capacityScoring": {
+    "questionScores": {
+      "Q11": { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6 },
+      "Q13": { "A": 1, "B": 2, "C": 3, "D": 4, "E": 5 },
+      "Q14": { "A": 0, "B": 1, "C": 2, "D": 3, "E": 4 },
+      "Q15": { "A": 0, "B": 1, "C": 2, "D": 3, "E": 4 },
+      "Q16": { "A": 0, "B": -0.5, "C": -1, "D": -2, "E": -3 }
+    },
+    "bands": [
+      { "maxInclusive": 5,     "category": "EMERGING_INVESTOR" },
+      { "maxInclusive": 9,     "category": "GROWING_INVESTOR" },
+      { "maxInclusive": 13,    "category": "AFFLUENT_INVESTOR" },
+      { "maxInclusive": 17,    "category": "HIGH_NET_WORTH" },
+      { "maxInclusive": 9999,  "category": "PRIVATE_WEALTH_UHNI" }
+    ]
+  },
+
+  "decisionStyle": {
+    "Q17": {
+      "A": "Analytical / Research-led",
+      "B": "Intuitive",
+      "C": "Advisor-led",
+      "D": "Family / Trusted Circle-led"
+    },
+    "Q18": {
+      "A": "Relationship-led",
+      "B": "Digital-led",
+      "C": "Documentation-led",
+      "D": "Minimal-update preference"
+    },
+    "Q19": {
+      "A": "Open",
+      "B": "Trust-dependent",
+      "C": "Private",
+      "D": "Emerging confidence"
+    }
+  },
+
+  "mindsetThemes": {
+    "Q1.A": "Freedom",
+    "Q1.B": "Family stability",
+    "Q1.C": "Growth",
+    "Q1.D": "Legacy",
+    "Q1.E": "Impact",
+    "Q2.A": "Freedom",
+    "Q2.B": "Stability",
+    "Q2.C": "Growth",
+    "Q2.D": "Impact",
+    "Q2.E": "Legacy",
+    "Q2.F": "Comfort and security"
+  },
+
+  "compliance": {
+    "enhancedTriggers": {
+      "sourceOfFundsOptions": ["Q21.E", "Q21.F", "Q21.G", "Q21.H"],
+      "uboOptions": ["Q22.B", "Q22.C"],
+      "highDebtOptions": ["Q16.D", "Q16.E"],
+      "highValueCategories": ["HIGH_NET_WORTH", "PRIVATE_WEALTH_UHNI"],
+      "highValueComplexSofMinSources": 3,
+      "flagSuitabilityMismatch": true,
+      "flagHighLiquidityAggressiveGoal": true
+    },
+    "holdTriggers": {
+      "uboNoOption": "Q22.B",
+      "othersUnspecified": true,
+      "missingMandatory": true
+    }
+  }
+}

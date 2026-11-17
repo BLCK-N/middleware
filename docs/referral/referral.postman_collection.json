@@ -1,0 +1,429 @@
+{
+  "info": {
+    "_postman_id": "d2f1a4c6-7b90-4e21-9a3d-8c5f2e1b6d70",
+    "name": "Myrtle - Referral / Agent API",
+    "description": "Referral programme endpoints under /api/v1/refer.\n\nA user becomes an AGENT (POST /be-an-agent), gets a shareable INVITE CODE (auto-generated from their name, customisable), and tracks who they referred plus what they earn.\n\nAuth: every request needs `Authorization: Bearer {{token}}` EXCEPT `GET /code-lookup` (public). Get the token from POST /api/v1/auth/login and put it in the `token` collection variable.\n\nInvite codes: 4-20 letters/digits, case-insensitive, stored/returned UPPERCASE.\n\nBefore you start:\n1. Set `baseUrl` (defaults to http://localhost:8080).\n2. Log in and set `token`.\n3. Run `Become an agent` first - the other authenticated calls 404 with 'You are not a referral agent yet' until the caller is an agent.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "inviteCode", "value": "DAV012MATI", "type": "string" },
+    { "key": "customCode", "value": "MYCODE1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1 - Become an agent",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/be-an-agent",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "be-an-agent"]
+        },
+        "description": "Enrol the current user as a referral agent and return their invite code. Idempotent - calling again returns the existing code."
+      },
+      "response": [
+        {
+          "name": "201 - Enrolled",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/be-an-agent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "be-an-agent"]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Congratulations. You can now invite others\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"inviteCode\": \"DAV012MATI\" }\n}"
+        },
+        {
+          "name": "200 - Already an agent",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/be-an-agent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "be-an-agent"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"You are already a referral agent\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"inviteCode\": \"DAV012MATI\" }\n}"
+        }
+      ]
+    },
+    {
+      "name": "2 - Dashboard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/dashboard",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "dashboard"]
+        },
+        "description": "Everything for the referral screen in one call: invite code, balance, earnings (last 30 daily lines) and the invite list. The three data sources are fetched in parallel server-side."
+      },
+      "response": [
+        {
+          "name": "200 - Dashboard",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "dashboard"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Dashboard retrieved\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": {\n    \"inviteCode\": \"DAV012MATI\",\n    \"balance\": { \"currency\": \"USD\", \"balance\": 1520.35 },\n    \"earnings\": [\n      { \"currency\": \"NGN\", \"amount\": 1520.35, \"date\": \"2026-08-10\" }\n    ],\n    \"invites\": [\n      { \"name\": \"John Smith\", \"joined\": \"2026-08-28T10:15:30\" }\n    ]\n  }\n}"
+        },
+        {
+          "name": "404 - Not an agent",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "dashboard"]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"You are not a referral agent yet\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "3 - Retrieve invite code",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/retrieve-invite-code",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "retrieve-invite-code"]
+        },
+        "description": "Return just the current user's invite code."
+      },
+      "response": [
+        {
+          "name": "200 - Code",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/retrieve-invite-code",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "retrieve-invite-code"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Invite code retrieved\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"inviteCode\": \"DAV012MATI\" }\n}"
+        }
+      ]
+    },
+    {
+      "name": "4 - Check code availability",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/invite-code/available?code={{customCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "invite-code", "available"],
+          "query": [{ "key": "code", "value": "{{customCode}}" }]
+        },
+        "description": "Check if a custom invite code is free before submitting it. 4-20 letters/digits."
+      },
+      "response": [
+        {
+          "name": "200 - Available",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/invite-code/available?code=MYCODE1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "invite-code", "available"],
+              "query": [{ "key": "code", "value": "MYCODE1" }]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Invite code is available\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"available\": true }\n}"
+        },
+        {
+          "name": "200 - Taken",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/invite-code/available?code=DAV012MATI",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "invite-code", "available"],
+              "query": [{ "key": "code", "value": "DAV012MATI" }]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"That invite code has been taken by another user\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"available\": false }\n}"
+        }
+      ]
+    },
+    {
+      "name": "5 - Customize invite code",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{customCode}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/invite-code/customize",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "invite-code", "customize"]
+        },
+        "description": "Set a custom invite code. 409 if another agent already has it. Re-submitting your own current code is allowed."
+      },
+      "response": [
+        {
+          "name": "200 - Updated",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"MYCODE1\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/invite-code/customize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "invite-code", "customize"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Invite code updated\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"inviteCode\": \"MYCODE1\" }\n}"
+        },
+        {
+          "name": "409 - Taken",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"DAV012MATI\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/invite-code/customize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "invite-code", "customize"]
+            }
+          },
+          "status": "Conflict",
+          "code": 409,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"That invite code has been taken by another user\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "6 - Code lookup (public)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/code-lookup?code={{inviteCode}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "code-lookup"],
+          "query": [{ "key": "code", "value": "{{inviteCode}}" }]
+        },
+        "description": "Public. For the signup screen: validate an invite code and show who invited them before the user submits."
+      },
+      "response": [
+        {
+          "name": "200 - Found",
+          "originalRequest": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/code-lookup?code=DAV012MATI",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "code-lookup"],
+              "query": [{ "key": "code", "value": "DAV012MATI" }]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"You were invited by John Smith\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"invitedBy\": \"John Smith\" }\n}"
+        },
+        {
+          "name": "404 - Unknown code",
+          "originalRequest": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/code-lookup?code=NOPE9999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "code-lookup"],
+              "query": [{ "key": "code", "value": "NOPE9999" }]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": false,\n  \"message\": \"Invite code is not correct\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "7 - Balance",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/balance",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "balance"]
+        },
+        "description": "Current referral balance from MyWealth. currency=null and balance=0 when nothing earned yet."
+      },
+      "response": [
+        {
+          "name": "200 - Balance",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "balance"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Referral balance retrieved\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": { \"currency\": \"USD\", \"balance\": 1520.35 }\n}"
+        }
+      ]
+    },
+    {
+      "name": "8 - Balance accruals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/balance-accruals",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "balance-accruals"]
+        },
+        "description": "Up to the last 30 daily earning lines."
+      },
+      "response": [
+        {
+          "name": "200 - Accruals",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/balance-accruals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "balance-accruals"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Referral accruals retrieved\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": [\n    { \"currency\": \"NGN\", \"amount\": 1520.35, \"date\": \"2026-08-10\" },\n    { \"currency\": \"NGN\", \"amount\": 980.00, \"date\": \"2026-08-09\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "9 - My referrals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/refer/my-referrals",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "refer", "my-referrals"]
+        },
+        "description": "List of users this agent referred - name and join date only, newest first."
+      },
+      "response": [
+        {
+          "name": "200 - Referrals",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refer/my-referrals",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refer", "my-referrals"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Referrals retrieved\",\n  \"timestamp\": \"2026-08-28T10:15:30.123\",\n  \"data\": [\n    { \"name\": \"John Smith\", \"joined\": \"2026-08-28T10:15:30\" },\n    { \"name\": \"Mary Jane\", \"joined\": \"2026-08-20T08:03:11\" }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "10 - (reference) Apply code at individual signup",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"emailAddress\": \"jane.doe@example.com\",\n  \"phoneNumber\": \"+2348012345678\",\n  \"password\": \"Password123\",\n  \"bvn\": \"12345678901\",\n  \"address\": \"12 Marina Road, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"nextOfKins\": [],\n  \"inviteCode\": \"{{inviteCode}}\",\n  \"otpReference\": \"<otp-reference>\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/create-account",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "auth", "create-account"]
+        },
+        "description": "Reference only (lives in the Auth API). The optional `inviteCode` field links the new user to an agent. Unknown/blank codes are ignored and signup still succeeds."
+      },
+      "response": []
+    }
+  ]
+}

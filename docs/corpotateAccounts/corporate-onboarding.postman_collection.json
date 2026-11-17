@@ -1,0 +1,3905 @@
+{
+  "info": {
+    "_postman_id": "b7e4c1a2-5d38-4f90-9c21-6a3e8d5f0b74",
+    "name": "Myrtle \u2014 Corporate Account API",
+    "description": "Every corporate account endpoint: the onboarding flow, the read endpoints that return what was submitted, and what comes after the account exists.\n\n**Folder 1 \u2014 Flow A** creates a corporate account. Run it top to bottom: start \u2192 validate-otp \u2192 basic-details \u2192 validate-bvn \u2192 kyb \u2192 memart \u2192 directors \u2192 credentials \u2192 complete. Each form page is a POST to submit it and a GET (`\u2026r` requests) to read back what was submitted. The read paths mirror the POST paths, with one exception: the BVN page submits at `POST /validate-bvn` but reads at `GET /bvn-data`.\n\n**Folder 2 \u2014 Read the submission** returns every page at once: `/submission` grouped by page, `/preview` as one flat record.\n\n**Folder 3 \u2014 Flow B** adds another login (max 5 per company) to an account created by Flow A.\n\n**Folder 4 \u2014 After onboarding**: login, and one endpoint that demonstrates what corporate users are blocked from.\n\n**Auth model**\n- Onboarding token (captured from `validate-otp` as `data.token`, valid 3 days) \u2192 `Authorization: Bearer` on every request in folders 1 and 2.\n- Lookup token (folder 3, valid 15 minutes) \u2192 in the request BODY of create-user, never as a header.\n- Session token (from complete / create-user / login, valid 3 days) \u2192 normal app use.\n\n**Before you start**\n1. Set `baseUrl` (defaults to localhost:8080).\n2. Set `email` to an address you can actually receive mail at \u2014 A0a and B2 send a real OTP.\n3. Set `bvn` and `rcNumber` to values your QoreID/CAC environment will accept.\n\n**Manual steps**: the OTP arrives by email, so paste it into the `otp` variable before running A0b, and into `newUserOtp` before B3. Tokens and references are captured into collection variables automatically; everything else chains.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 \u00b7 Flow A \u2014 Create corporate account (submit + read each page)",
+      "description": "The nine calls that create an account, each form page paired with its read endpoint. Read paths mirror the POST paths except the BVN page, which reads at GET /bvn-data.",
+      "item": [
+        {
+          "name": "A0a \u00b7 Start (request OTP)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/start/{{email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "start",
+                "{{email}}"
+              ]
+            },
+            "description": "Emails a 6-digit OTP and returns the reference to pair with it. Public.\n\nThe OTP expires 5 minutes after issue. Paste the code you receive into the `otp` collection variable before running A0b."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 OTP sent",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/start/{{email}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "start",
+                    "{{email}}"
+                  ]
+                },
+                "description": "Emails a 6-digit OTP and returns the reference to pair with it. Public.\n\nThe OTP expires 5 minutes after issue. Paste the code you receive into the `otp` collection variable before running A0b."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Validate OTP to continue\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"otpReference\": \"6f21c0b4-9a3d-4c1e-8f77-2b5a9d0e1f34\",\n    \"email\": \"david@acme.com\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.otpReference) {",
+                  "    pm.collectionVariables.set('otpReference', body.data.otpReference);",
+                  "}",
+                  "pm.test('OTP issued', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A0b \u00b7 Validate OTP (get onboarding token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "validate-otp"
+              ]
+            },
+            "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Verified (new onboarding)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"page\": 1\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Verified (resuming at MEMART)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"OTP verified successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"page\": 5\n  }\n}"
+            },
+            {
+              "name": "400 \u00b7 Invalid OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 \u00b7 Expired OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"OTP expired. generate an OTP to continue\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 \u00b7 Unknown reference",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"OTP not found for this reference\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 \u00b7 Account already exists",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-otp"
+                  ]
+                },
+                "description": "Verifies the OTP, issues the **onboarding token**, and returns the resume `page`.\n\nThe token is captured into `onboardingToken` and used by every request below. It is valid for 3 days.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"otpReference\": \"{{otpReference}}\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Corporate account already exists\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.token) {",
+                  "    pm.collectionVariables.set('onboardingToken', body.data.token);",
+                  "}",
+                  "pm.test('onboarding token issued', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A1 \u00b7 Basic details (submit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "basic-details"
+              ]
+            },
+            "description": "Page 1. Name, phone and gender of the representative.\n\nRequires the onboarding token. Re-sending replaces the page.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"David\",\n  \"middleName\": \"Oluwaseun\",\n  \"lastName\": \"Areegbe\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"2348012345678\",\n  \"gender\": \"MALE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 \u00b7 Collected",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1. Name, phone and gender of the representative.\n\nRequires the onboarding token. Re-sending replaces the page.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"David\",\n  \"middleName\": \"Oluwaseun\",\n  \"lastName\": \"Areegbe\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"2348012345678\",\n  \"gender\": \"MALE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Basic details collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1. Name, phone and gender of the representative.\n\nRequires the onboarding token. Re-sending replaces the page.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"David\",\n  \"middleName\": \"Oluwaseun\",\n  \"lastName\": \"Areegbe\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"2348012345678\",\n  \"gender\": \"MALE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 \u00b7 Already submitted upstream",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1. Name, phone and gender of the representative.\n\nRequires the onboarding token. Re-sending replaces the page.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"David\",\n  \"middleName\": \"Oluwaseun\",\n  \"lastName\": \"Areegbe\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"2348012345678\",\n  \"gender\": \"MALE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This corporate onboarding has already been submitted. Please continue where you left off, or contact wecare@myrtleng.com for help.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A1r \u00b7 Basic details (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "basic-details"
+              ]
+            },
+            "description": "Page 1, read back. Pre-fills the form when the user navigates back or resumes.\n\n`collected` is false until the page has been submitted at least once."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1, read back. Pre-fills the form when the user navigates back or resumes.\n\n`collected` is false until the page has been submitted at least once."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Basic details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"david@acme.com\",\n    \"emailVerified\": true,\n    \"phoneNumber\": \"2348012345678\",\n    \"gender\": \"MALE\"\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Not collected yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1, read back. Pre-fills the form when the user navigates back or resumes.\n\n`collected` is false until the page has been submitted at least once."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Basic details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"firstName\": null,\n    \"middleName\": null,\n    \"lastName\": null,\n    \"email\": \"david@acme.com\",\n    \"emailVerified\": true,\n    \"phoneNumber\": null,\n    \"gender\": null\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1, read back. Pre-fills the form when the user navigates back or resumes.\n\n`collected` is false until the page has been submitted at least once."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 \u00b7 No onboarding in progress",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/basic-details",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "basic-details"
+                  ]
+                },
+                "description": "Page 1, read back. Pre-fills the form when the user navigates back or resumes.\n\n`collected` is false until the page has been submitted at least once."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No corporate onboarding in progress.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2 \u00b7 Validate BVN (submit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-bvn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "validate-bvn"
+              ]
+            },
+            "description": "Page 2. Verifies the representative's BVN against the name and phone from page 1, and pulls their date of birth and marital status.\n\nNote: the submit path is `/validate-bvn`, but the read-back path is `/bvn-data` (A2r).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bvn\": \"{{bvn}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 \u00b7 Verified",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-bvn",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-bvn"
+                  ]
+                },
+                "description": "Page 2. Verifies the representative's BVN against the name and phone from page 1, and pulls their date of birth and marital status.\n\nNote: the submit path is `/validate-bvn`, but the read-back path is `/bvn-data` (A2r).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bvn\": \"{{bvn}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"BVN verified and collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"middleName\": \"Oluwaseun\",\n    \"verified\": true\n  }\n}"
+            },
+            {
+              "name": "400 \u00b7 Basic details missing",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-bvn",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-bvn"
+                  ]
+                },
+                "description": "Page 2. Verifies the representative's BVN against the name and phone from page 1, and pulls their date of birth and marital status.\n\nNote: the submit path is `/validate-bvn`, but the read-back path is `/bvn-data` (A2r).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bvn\": \"{{bvn}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Your onboarding details are incomplete. Please submit your basic details again to continue.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "503 \u00b7 Verification unavailable (retry is safe)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/validate-bvn",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "validate-bvn"
+                  ]
+                },
+                "description": "Page 2. Verifies the representative's BVN against the name and phone from page 1, and pulls their date of birth and marital status.\n\nNote: the submit path is `/validate-bvn`, but the read-back path is `/bvn-data` (A2r).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bvn\": \"{{bvn}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unable to verify BVN at the moment. Please try again later.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A2r \u00b7 BVN details (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/bvn-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "bvn-data"
+              ]
+            },
+            "description": "Page 2, read back \u2014 served at **`GET /corporate/bvn-data`** (not `/validate-bvn`). The BVN is masked; correct it by re-submitting through the POST, never by editing this value.\n\n`dateOfBirth` and `maritalStatus` came from the BVN lookup, not from the user."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Verified",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/bvn-data",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "bvn-data"
+                  ]
+                },
+                "description": "Page 2, read back \u2014 served at **`GET /corporate/bvn-data`** (not `/validate-bvn`). The BVN is masked; correct it by re-submitting through the POST, never by editing this value.\n\n`dateOfBirth` and `maritalStatus` came from the BVN lookup, not from the user."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"BVN details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"verified\": true,\n    \"maskedBvn\": \"*********01\",\n    \"middleName\": \"Oluwaseun\",\n    \"dateOfBirth\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Not collected yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/bvn-data",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "bvn-data"
+                  ]
+                },
+                "description": "Page 2, read back \u2014 served at **`GET /corporate/bvn-data`** (not `/validate-bvn`). The BVN is masked; correct it by re-submitting through the POST, never by editing this value.\n\n`dateOfBirth` and `maritalStatus` came from the BVN lookup, not from the user."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"BVN details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"verified\": false,\n    \"maskedBvn\": null,\n    \"middleName\": null,\n    \"dateOfBirth\": null,\n    \"maritalStatus\": null\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/bvn-data",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "bvn-data"
+                  ]
+                },
+                "description": "Page 2, read back \u2014 served at **`GET /corporate/bvn-data`** (not `/validate-bvn`). The BVN is masked; correct it by re-submitting through the POST, never by editing this value.\n\n`dateOfBirth` and `maritalStatus` came from the BVN lookup, not from the user."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4 \u00b7 KYB (submit RC number)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "kyb"
+              ]
+            },
+            "description": "Page 4. Verifies the RC number against CAC and stores the company record it returns \u2014 the user supplies nothing but the RC number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 \u00b7 Verified",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4. Verifies the RC number against CAC and stores the company record it returns \u2014 the user supplies nothing but the RC number.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Business details verified and collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4. Verifies the RC number against CAC and stores the company record it returns \u2014 the user supplies nothing but the RC number.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "503 \u00b7 CAC unavailable (retry is safe)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4. Verifies the RC number against CAC and stores the company record it returns \u2014 the user supplies nothing but the RC number.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unable to verify Business Number at the moment. Please try again later.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A4r \u00b7 Business details (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "kyb"
+              ]
+            },
+            "description": "Page 4, read back \u2014 the verified CAC company record. Display it; only `rcNumber` was ever user input."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Verified",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4, read back \u2014 the verified CAC company record. Display it; only `rcNumber` was ever user input."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Business details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"cacVerified\": true,\n    \"rcNumber\": \"RC1234567\",\n    \"companyName\": \"ACME VENTURES LIMITED\",\n    \"companyType\": \"PRIVATE_COMPANY_LIMITED_BY_SHARES\",\n    \"businessStructure\": \"PRIVATE_CORPORATION\",\n    \"registrationDate\": \"2018-04-19T00:00:00Z\",\n    \"classification\": \"COMPANY\",\n    \"companyStatus\": \"ACTIVE\",\n    \"companyEmail\": \"info@acme.com\",\n    \"headOfficeAddress\": \"22 Admiralty Way, Lekki Phase 1\",\n    \"branchAddress\": null,\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"state\": \"Lagos\",\n    \"city\": \"Lagos\",\n    \"lga\": \"Eti-Osa\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"shareCapital\": 10000000.0,\n    \"shareCapitalInWords\": \"Ten Million Naira\",\n    \"numberOfAffiliates\": 3\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Not collected yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4, read back \u2014 the verified CAC company record. Display it; only `rcNumber` was ever user input."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Business details retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"cacVerified\": false,\n    \"rcNumber\": null,\n    \"companyName\": null,\n    \"companyType\": null,\n    \"businessStructure\": null,\n    \"registrationDate\": null,\n    \"classification\": null,\n    \"companyStatus\": null,\n    \"companyEmail\": null,\n    \"headOfficeAddress\": null,\n    \"branchAddress\": null,\n    \"addressLine2\": null,\n    \"state\": null,\n    \"city\": null,\n    \"lga\": null,\n    \"postCode\": null,\n    \"country\": null,\n    \"shareCapital\": null,\n    \"shareCapitalInWords\": null,\n    \"numberOfAffiliates\": null\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/kyb",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "kyb"
+                  ]
+                },
+                "description": "Page 4, read back \u2014 the verified CAC company record. Display it; only `rcNumber` was ever user input."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5a \u00b7 Upload MEMART file (helper)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/s3/upload-file",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "s3",
+                "upload-file"
+              ]
+            },
+            "description": "Public helper. Upload the MEMART document, then send the URL it returns to A5b.\n\nPick a file for the `file` form field before sending.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Uploaded",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/s3/upload-file",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "s3",
+                    "upload-file"
+                  ]
+                },
+                "description": "Public helper. Upload the MEMART document, then send the URL it returns to A5b.\n\nPick a file for the `file` form field before sending.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"File Uploaded Successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": \"https://myrtle-bucket.s3.eu-west-1.amazonaws.com/1754661234567_memart.pdf\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) { pm.collectionVariables.set('memartUrl', body.data); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A5b \u00b7 MEMART (attach URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "memart"
+              ]
+            },
+            "description": "Page 5. Attaches the uploaded document's URL to the onboarding.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{memartUrl}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Attached",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "memart"
+                  ]
+                },
+                "description": "Page 5. Attaches the uploaded document's URL to the onboarding.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"{{memartUrl}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Memart file collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "memart"
+                  ]
+                },
+                "description": "Page 5. Attaches the uploaded document's URL to the onboarding.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"{{memartUrl}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A5r \u00b7 MEMART (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "memart"
+              ]
+            },
+            "description": "Page 5, read back. Use `collected` to show \"already uploaded \u2014 replace?\" instead of an empty file picker."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "memart"
+                  ]
+                },
+                "description": "Page 5, read back. Use `collected` to show \"already uploaded \u2014 replace?\" instead of an empty file picker."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Memart file retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"url\": \"https://myrtle-bucket.s3.eu-west-1.amazonaws.com/1754661234567_memart.pdf\"\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Not collected yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "memart"
+                  ]
+                },
+                "description": "Page 5, read back. Use `collected` to show \"already uploaded \u2014 replace?\" instead of an empty file picker."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Memart file retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"url\": null\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/memart",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "memart"
+                  ]
+                },
+                "description": "Page 5, read back. Use `collected` to show \"already uploaded \u2014 replace?\" instead of an empty file picker."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6 \u00b7 Directors (submit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "directors"
+              ]
+            },
+            "description": "Page 6. **The body is a bare JSON array**, and sending it REPLACES every director already stored.\n\nEvery director needs their own 11-digit BVN. Include `birthDate` per director \u2014 omitting it silently applies the representative's date of birth.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"2348012345678\",\n    \"bvn\": \"{{bvn}}\",\n    \"role\": \"CORP_DIRECTOR\",\n    \"beneficialOwner\": true,\n    \"gender\": \"MALE\",\n    \"title\": \"Mr\",\n    \"addressLine1\": \"22 Admiralty Way\",\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"city\": \"Lagos\",\n    \"state\": \"Lagos\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"birthDate\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6. **The body is a bare JSON array**, and sending it REPLACES every director already stored.\n\nEvery director needs their own 11-digit BVN. Include `birthDate` per director \u2014 omitting it silently applies the representative's date of birth.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"2348012345678\",\n    \"bvn\": \"{{bvn}}\",\n    \"role\": \"CORP_DIRECTOR\",\n    \"beneficialOwner\": true,\n    \"gender\": \"MALE\",\n    \"title\": \"Mr\",\n    \"addressLine1\": \"22 Admiralty Way\",\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"city\": \"Lagos\",\n    \"state\": \"Lagos\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"birthDate\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Directors collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 \u00b7 Empty array",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6. **The body is a bare JSON array**, and sending it REPLACES every director already stored.\n\nEvery director needs their own 11-digit BVN. Include `birthDate` per director \u2014 omitting it silently applies the representative's date of birth.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"2348012345678\",\n    \"bvn\": \"{{bvn}}\",\n    \"role\": \"CORP_DIRECTOR\",\n    \"beneficialOwner\": true,\n    \"gender\": \"MALE\",\n    \"title\": \"Mr\",\n    \"addressLine1\": \"22 Admiralty Way\",\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"city\": \"Lagos\",\n    \"state\": \"Lagos\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"birthDate\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"At least one director is required\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 \u00b7 Bad BVN (director named)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6. **The body is a bare JSON array**, and sending it REPLACES every director already stored.\n\nEvery director needs their own 11-digit BVN. Include `birthDate` per director \u2014 omitting it silently applies the representative's date of birth.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"2348012345678\",\n    \"bvn\": \"{{bvn}}\",\n    \"role\": \"CORP_DIRECTOR\",\n    \"beneficialOwner\": true,\n    \"gender\": \"MALE\",\n    \"title\": \"Mr\",\n    \"addressLine1\": \"22 Admiralty Way\",\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"city\": \"Lagos\",\n    \"state\": \"Lagos\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"birthDate\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"BVN for John Doe must be exactly 11 digits.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6. **The body is a bare JSON array**, and sending it REPLACES every director already stored.\n\nEvery director needs their own 11-digit BVN. Include `birthDate` per director \u2014 omitting it silently applies the representative's date of birth.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"email\": \"{{email}}\",\n    \"phoneNumber\": \"2348012345678\",\n    \"bvn\": \"{{bvn}}\",\n    \"role\": \"CORP_DIRECTOR\",\n    \"beneficialOwner\": true,\n    \"gender\": \"MALE\",\n    \"title\": \"Mr\",\n    \"addressLine1\": \"22 Admiralty Way\",\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"city\": \"Lagos\",\n    \"state\": \"Lagos\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"birthDate\": \"1985-03-11\",\n    \"maritalStatus\": \"SINGLE\"\n  }\n]",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A6r \u00b7 Directors (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "directors"
+              ]
+            },
+            "description": "Page 6, read back \u2014 the whole set, with BVNs masked.\n\nBecause the BVNs are masked, this array cannot be posted straight back: keep the real values in client state, or re-prompt for the BVN of any director the user edits."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6, read back \u2014 the whole set, with BVNs masked.\n\nBecause the BVNs are masked, this array cannot be posted straight back: keep the real values in client state, or re-prompt for the BVN of any director the user edits."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Directors retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"count\": 1,\n    \"directors\": [\n      {\n        \"firstName\": \"David\",\n        \"middleName\": \"Oluwaseun\",\n        \"lastName\": \"Areegbe\",\n        \"email\": \"david@acme.com\",\n        \"phoneNumber\": \"2348012345678\",\n        \"maskedBvn\": \"*********01\",\n        \"role\": \"CORP_DIRECTOR\",\n        \"beneficialOwner\": true,\n        \"gender\": \"MALE\",\n        \"title\": \"Mr\",\n        \"addressLine1\": \"22 Admiralty Way\",\n        \"addressLine2\": \"Lekki Phase 1\",\n        \"city\": \"Lagos\",\n        \"state\": \"Lagos\",\n        \"postCode\": \"100001\",\n        \"country\": \"NG\",\n        \"birthDate\": \"1985-03-11\",\n        \"maritalStatus\": \"SINGLE\"\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 None yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6, read back \u2014 the whole set, with BVNs masked.\n\nBecause the BVNs are masked, this array cannot be posted straight back: keep the real values in client state, or re-prompt for the BVN of any director the user edits."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Directors retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"count\": 0,\n    \"directors\": []\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/directors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "directors"
+                  ]
+                },
+                "description": "Page 6, read back \u2014 the whole set, with BVNs masked.\n\nBecause the BVNs are masked, this array cannot be posted straight back: keep the real values in client state, or re-prompt for the BVN of any director the user edits."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A7 \u00b7 Credentials (submit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "credentials"
+              ]
+            },
+            "description": "Page 7. Login credentials plus the remaining MyWealth-required profile fields.\n\nReturns the progress object \u2014 `outstandingSteps` must be empty before A8 will pass its checks.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"1234\",\n  \"password\": \"Password123!\",\n  \"profession\": \"DIRECTOR\",\n  \"nationality\": \"Nigerian\",\n  \"idExpDate\": \"2030-12-31\",\n  \"valuationCurrency\": \"NGN\",\n  \"businessStructure\": \"PRIVATE_CORPORATION\",\n  \"username\": \"davidareegbe\",\n  \"title\": \"Mr\",\n  \"maritalStatus\": \"SINGLE\",\n  \"employerName\": \"ACME VENTURES LIMITED\",\n  \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"netWorth\": \"1000000-5000000\",\n  \"annualIncome\": \"1000000-5000000\",\n  \"liquidNetWorth\": \"500000-2000000\",\n  \"sourceOfWealth\": \"Business Income\",\n  \"investmentExperience\": \"MODERATE\",\n  \"riskTolerance\": \"MODERATE\",\n  \"investmentObjective\": \"GROWTH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "credentials"
+                  ]
+                },
+                "description": "Page 7. Login credentials plus the remaining MyWealth-required profile fields.\n\nReturns the progress object \u2014 `outstandingSteps` must be empty before A8 will pass its checks.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pin\": \"1234\",\n  \"password\": \"Password123!\",\n  \"profession\": \"DIRECTOR\",\n  \"nationality\": \"Nigerian\",\n  \"idExpDate\": \"2030-12-31\",\n  \"valuationCurrency\": \"NGN\",\n  \"businessStructure\": \"PRIVATE_CORPORATION\",\n  \"username\": \"davidareegbe\",\n  \"title\": \"Mr\",\n  \"maritalStatus\": \"SINGLE\",\n  \"employerName\": \"ACME VENTURES LIMITED\",\n  \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"netWorth\": \"1000000-5000000\",\n  \"annualIncome\": \"1000000-5000000\",\n  \"liquidNetWorth\": \"500000-2000000\",\n  \"sourceOfWealth\": \"Business Income\",\n  \"investmentExperience\": \"MODERATE\",\n  \"riskTolerance\": \"MODERATE\",\n  \"investmentObjective\": \"GROWTH\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate credentials collected successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"email\": \"david@acme.com\",\n    \"companyName\": \"ACME VENTURES LIMITED\",\n    \"rcNumber\": \"RC1234567\",\n    \"maskedBvn\": \"*********01\",\n    \"emailVerified\": true,\n    \"cacVerified\": true,\n    \"memartCollected\": true,\n    \"directorsCollected\": 1,\n    \"credentialsCollected\": true,\n    \"outstandingSteps\": []\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "credentials"
+                  ]
+                },
+                "description": "Page 7. Login credentials plus the remaining MyWealth-required profile fields.\n\nReturns the progress object \u2014 `outstandingSteps` must be empty before A8 will pass its checks.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pin\": \"1234\",\n  \"password\": \"Password123!\",\n  \"profession\": \"DIRECTOR\",\n  \"nationality\": \"Nigerian\",\n  \"idExpDate\": \"2030-12-31\",\n  \"valuationCurrency\": \"NGN\",\n  \"businessStructure\": \"PRIVATE_CORPORATION\",\n  \"username\": \"davidareegbe\",\n  \"title\": \"Mr\",\n  \"maritalStatus\": \"SINGLE\",\n  \"employerName\": \"ACME VENTURES LIMITED\",\n  \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"netWorth\": \"1000000-5000000\",\n  \"annualIncome\": \"1000000-5000000\",\n  \"liquidNetWorth\": \"500000-2000000\",\n  \"sourceOfWealth\": \"Business Income\",\n  \"investmentExperience\": \"MODERATE\",\n  \"riskTolerance\": \"MODERATE\",\n  \"investmentObjective\": \"GROWTH\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A7r \u00b7 Credentials (read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "credentials"
+              ]
+            },
+            "description": "Page 7, read back. The PIN and password are write-only \u2014 they come back as `pinSet` / `passwordSet`. Everything else is the profile the user filled in."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Collected",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "credentials"
+                  ]
+                },
+                "description": "Page 7, read back. The PIN and password are write-only \u2014 they come back as `pinSet` / `passwordSet`. Everything else is the profile the user filled in."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate credentials retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": true,\n    \"pinSet\": true,\n    \"passwordSet\": true,\n    \"username\": \"davidareegbe\",\n    \"profession\": \"DIRECTOR\",\n    \"nationality\": \"Nigerian\",\n    \"idExpDate\": \"2030-12-31\",\n    \"valuationCurrency\": \"NGN\",\n    \"businessStructure\": \"PRIVATE_CORPORATION\",\n    \"title\": \"Mr\",\n    \"maritalStatus\": \"SINGLE\",\n    \"employerName\": \"ACME VENTURES LIMITED\",\n    \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n    \"netWorth\": \"1000000-5000000\",\n    \"annualIncome\": \"1000000-5000000\",\n    \"liquidNetWorth\": \"500000-2000000\",\n    \"sourceOfWealth\": \"Business Income\",\n    \"investmentExperience\": \"MODERATE\",\n    \"riskTolerance\": \"MODERATE\",\n    \"investmentObjective\": \"GROWTH\"\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Not collected yet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "credentials"
+                  ]
+                },
+                "description": "Page 7, read back. The PIN and password are write-only \u2014 they come back as `pinSet` / `passwordSet`. Everything else is the profile the user filled in."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate credentials retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"collected\": false,\n    \"pinSet\": false,\n    \"passwordSet\": false,\n    \"username\": null,\n    \"profession\": null,\n    \"nationality\": null,\n    \"idExpDate\": null,\n    \"valuationCurrency\": null,\n    \"businessStructure\": null,\n    \"title\": null,\n    \"maritalStatus\": null,\n    \"employerName\": null,\n    \"employerAddress\": null,\n    \"netWorth\": null,\n    \"annualIncome\": null,\n    \"liquidNetWorth\": null,\n    \"sourceOfWealth\": null,\n    \"investmentExperience\": null,\n    \"riskTolerance\": null,\n    \"investmentObjective\": null\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "credentials"
+                  ]
+                },
+                "description": "Page 7, read back. The PIN and password are write-only \u2014 they come back as `pinSet` / `passwordSet`. Everything else is the profile the user filled in."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "A8 \u00b7 Complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "complete"
+              ]
+            },
+            "description": "Page 8. Creates the MyWealth corporate client, its investment account and the representative's login. No body.\n\n**Retrying is always safe** \u2014 upstream ids are checkpointed as they are created, so a retry resumes rather than creating a second client. The returned token is a normal session token; the onboarding token is now spent and the read endpoints start returning 404."
+          },
+          "response": [
+            {
+              "name": "201 \u00b7 Account created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "complete"
+                  ]
+                },
+                "description": "Page 8. Creates the MyWealth corporate client, its investment account and the representative's login. No body.\n\n**Retrying is always safe** \u2014 upstream ids are checkpointed as they are created, so a retry resumes rather than creating a second client. The returned token is a normal session token; the onboarding token is now spent and the read endpoints start returning 404."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate account created successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+            },
+            {
+              "name": "400 \u00b7 A step is still outstanding",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "complete"
+                  ]
+                },
+                "description": "Page 8. Creates the MyWealth corporate client, its investment account and the representative's login. No body.\n\n**Retrying is always safe** \u2014 upstream ids are checkpointed as they are created, so a retry resumes rather than creating a second client. The returned token is a normal session token; the onboarding token is now spent and the read endpoints start returning 404."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"MEMART document must be collected before creating the corporate account\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 \u00b7 Already registered",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "complete"
+                  ]
+                },
+                "description": "Page 8. Creates the MyWealth corporate client, its investment account and the representative's login. No body.\n\n**Retrying is always safe** \u2014 upstream ids are checkpointed as they are created, so a retry resumes rather than creating a second client. The returned token is a normal session token; the onboarding token is now spent and the read endpoints start returning 404."
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Corporate account already exists\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "503 \u00b7 Upstream unavailable (retry is safe)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "complete"
+                  ]
+                },
+                "description": "Page 8. Creates the MyWealth corporate client, its investment account and the representative's login. No body.\n\n**Retrying is always safe** \u2014 upstream ids are checkpointed as they are created, so a retry resumes rather than creating a second client. The returned token is a normal session token; the onboarding token is now spent and the read endpoints start returning 404."
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"We could not create your corporate account right now. Please try again shortly.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.accessToken) {",
+                  "    pm.collectionVariables.set('sessionToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 \u00b7 Read the whole submission",
+      "description": "Every page in one response. Onboarding token required.",
+      "item": [
+        {
+          "name": "R1 \u00b7 Full submission (all pages)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/submission",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "submission"
+              ]
+            },
+            "description": "**Everything submitted so far, grouped by the page that collected it** \u2014 one call instead of the six per-page reads. Use it to hydrate the whole wizard on entry, and for the review screen.\n\nAdds two things the per-page reads don't have: `nextPage` (the resume page, recalculated now) and `progress.outstandingSteps` (exactly what `complete` enforces)."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Everything collected",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/submission",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "submission"
+                  ]
+                },
+                "description": "**Everything submitted so far, grouped by the page that collected it** \u2014 one call instead of the six per-page reads. Use it to hydrate the whole wizard on entry, and for the review screen.\n\nAdds two things the per-page reads don't have: `nextPage` (the resume page, recalculated now) and `progress.outstandingSteps` (exactly what `complete` enforces)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate onboarding submission retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"email\": \"david@acme.com\",\n    \"emailVerified\": true,\n    \"nextPage\": 8,\n    \"basicDetails\": {\n      \"collected\": true,\n      \"firstName\": \"David\",\n      \"middleName\": \"Oluwaseun\",\n      \"lastName\": \"Areegbe\",\n      \"email\": \"david@acme.com\",\n      \"emailVerified\": true,\n      \"phoneNumber\": \"2348012345678\",\n      \"gender\": \"MALE\"\n    },\n    \"bvn\": {\n      \"collected\": true,\n      \"verified\": true,\n      \"maskedBvn\": \"*********01\",\n      \"middleName\": \"Oluwaseun\",\n      \"dateOfBirth\": \"1985-03-11\",\n      \"maritalStatus\": \"SINGLE\"\n    },\n    \"kyb\": {\n      \"collected\": true,\n      \"cacVerified\": true,\n      \"rcNumber\": \"RC1234567\",\n      \"companyName\": \"ACME VENTURES LIMITED\",\n      \"companyType\": \"PRIVATE_COMPANY_LIMITED_BY_SHARES\",\n      \"businessStructure\": \"PRIVATE_CORPORATION\",\n      \"registrationDate\": \"2018-04-19T00:00:00Z\",\n      \"classification\": \"COMPANY\",\n      \"companyStatus\": \"ACTIVE\",\n      \"companyEmail\": \"info@acme.com\",\n      \"headOfficeAddress\": \"22 Admiralty Way, Lekki Phase 1\",\n      \"branchAddress\": null,\n      \"addressLine2\": \"Lekki Phase 1\",\n      \"state\": \"Lagos\",\n      \"city\": \"Lagos\",\n      \"lga\": \"Eti-Osa\",\n      \"postCode\": \"100001\",\n      \"country\": \"NG\",\n      \"shareCapital\": 10000000.0,\n      \"shareCapitalInWords\": \"Ten Million Naira\",\n      \"numberOfAffiliates\": 3\n    },\n    \"memart\": {\n      \"collected\": true,\n      \"url\": \"https://myrtle-bucket.s3.eu-west-1.amazonaws.com/1754661234567_memart.pdf\"\n    },\n    \"directors\": {\n      \"collected\": true,\n      \"count\": 1,\n      \"directors\": [\n        {\n          \"firstName\": \"David\",\n          \"middleName\": \"Oluwaseun\",\n          \"lastName\": \"Areegbe\",\n          \"email\": \"david@acme.com\",\n          \"phoneNumber\": \"2348012345678\",\n          \"maskedBvn\": \"*********01\",\n          \"role\": \"CORP_DIRECTOR\",\n          \"beneficialOwner\": true,\n          \"gender\": \"MALE\",\n          \"title\": \"Mr\",\n          \"addressLine1\": \"22 Admiralty Way\",\n          \"addressLine2\": \"Lekki Phase 1\",\n          \"city\": \"Lagos\",\n          \"state\": \"Lagos\",\n          \"postCode\": \"100001\",\n          \"country\": \"NG\",\n          \"birthDate\": \"1985-03-11\",\n          \"maritalStatus\": \"SINGLE\"\n        }\n      ]\n    },\n    \"credentials\": {\n      \"collected\": true,\n      \"pinSet\": true,\n      \"passwordSet\": true,\n      \"username\": \"davidareegbe\",\n      \"profession\": \"DIRECTOR\",\n      \"nationality\": \"Nigerian\",\n      \"idExpDate\": \"2030-12-31\",\n      \"valuationCurrency\": \"NGN\",\n      \"businessStructure\": \"PRIVATE_CORPORATION\",\n      \"title\": \"Mr\",\n      \"maritalStatus\": \"SINGLE\",\n      \"employerName\": \"ACME VENTURES LIMITED\",\n      \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n      \"netWorth\": \"1000000-5000000\",\n      \"annualIncome\": \"1000000-5000000\",\n      \"liquidNetWorth\": \"500000-2000000\",\n      \"sourceOfWealth\": \"Business Income\",\n      \"investmentExperience\": \"MODERATE\",\n      \"riskTolerance\": \"MODERATE\",\n      \"investmentObjective\": \"GROWTH\"\n    },\n    \"progress\": {\n      \"email\": \"david@acme.com\",\n      \"companyName\": \"ACME VENTURES LIMITED\",\n      \"rcNumber\": \"RC1234567\",\n      \"maskedBvn\": \"*********01\",\n      \"emailVerified\": true,\n      \"cacVerified\": true,\n      \"memartCollected\": true,\n      \"directorsCollected\": 1,\n      \"credentialsCollected\": true,\n      \"outstandingSteps\": []\n    }\n  }\n}"
+            },
+            {
+              "name": "200 \u00b7 Halfway through",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/submission",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "submission"
+                  ]
+                },
+                "description": "**Everything submitted so far, grouped by the page that collected it** \u2014 one call instead of the six per-page reads. Use it to hydrate the whole wizard on entry, and for the review screen.\n\nAdds two things the per-page reads don't have: `nextPage` (the resume page, recalculated now) and `progress.outstandingSteps` (exactly what `complete` enforces)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate onboarding submission retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"email\": \"david@acme.com\",\n    \"emailVerified\": true,\n    \"nextPage\": 5,\n    \"basicDetails\": {\n      \"collected\": true,\n      \"firstName\": \"David\",\n      \"middleName\": \"Oluwaseun\",\n      \"lastName\": \"Areegbe\",\n      \"email\": \"david@acme.com\",\n      \"emailVerified\": true,\n      \"phoneNumber\": \"2348012345678\",\n      \"gender\": \"MALE\"\n    },\n    \"bvn\": {\n      \"collected\": true,\n      \"verified\": true,\n      \"maskedBvn\": \"*********01\",\n      \"middleName\": \"Oluwaseun\",\n      \"dateOfBirth\": \"1985-03-11\",\n      \"maritalStatus\": \"SINGLE\"\n    },\n    \"kyb\": {\n      \"collected\": true,\n      \"cacVerified\": true,\n      \"rcNumber\": \"RC1234567\",\n      \"companyName\": \"ACME VENTURES LIMITED\",\n      \"companyType\": \"PRIVATE_COMPANY_LIMITED_BY_SHARES\",\n      \"businessStructure\": \"PRIVATE_CORPORATION\",\n      \"registrationDate\": \"2018-04-19T00:00:00Z\",\n      \"classification\": \"COMPANY\",\n      \"companyStatus\": \"ACTIVE\",\n      \"companyEmail\": \"info@acme.com\",\n      \"headOfficeAddress\": \"22 Admiralty Way, Lekki Phase 1\",\n      \"branchAddress\": null,\n      \"addressLine2\": \"Lekki Phase 1\",\n      \"state\": \"Lagos\",\n      \"city\": \"Lagos\",\n      \"lga\": \"Eti-Osa\",\n      \"postCode\": \"100001\",\n      \"country\": \"NG\",\n      \"shareCapital\": 10000000.0,\n      \"shareCapitalInWords\": \"Ten Million Naira\",\n      \"numberOfAffiliates\": 3\n    },\n    \"memart\": {\n      \"collected\": false,\n      \"url\": null\n    },\n    \"directors\": {\n      \"collected\": false,\n      \"count\": 0,\n      \"directors\": []\n    },\n    \"credentials\": {\n      \"collected\": false,\n      \"pinSet\": false,\n      \"passwordSet\": false,\n      \"username\": null,\n      \"profession\": null,\n      \"nationality\": null,\n      \"idExpDate\": null,\n      \"valuationCurrency\": null,\n      \"businessStructure\": null,\n      \"title\": null,\n      \"maritalStatus\": null,\n      \"employerName\": null,\n      \"employerAddress\": null,\n      \"netWorth\": null,\n      \"annualIncome\": null,\n      \"liquidNetWorth\": null,\n      \"sourceOfWealth\": null,\n      \"investmentExperience\": null,\n      \"riskTolerance\": null,\n      \"investmentObjective\": null\n    },\n    \"progress\": {\n      \"email\": \"david@acme.com\",\n      \"companyName\": \"ACME VENTURES LIMITED\",\n      \"rcNumber\": \"RC1234567\",\n      \"maskedBvn\": \"*********01\",\n      \"emailVerified\": true,\n      \"cacVerified\": true,\n      \"memartCollected\": false,\n      \"directorsCollected\": 0,\n      \"credentialsCollected\": false,\n      \"outstandingSteps\": [\n        \"MEMART\",\n        \"DIRECTORS\",\n        \"CREDENTIALS\"\n      ]\n    }\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/submission",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "submission"
+                  ]
+                },
+                "description": "**Everything submitted so far, grouped by the page that collected it** \u2014 one call instead of the six per-page reads. Use it to hydrate the whole wizard on entry, and for the review screen.\n\nAdds two things the per-page reads don't have: `nextPage` (the resume page, recalculated now) and `progress.outstandingSteps` (exactly what `complete` enforces)."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 \u00b7 No onboarding in progress",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/submission",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "submission"
+                  ]
+                },
+                "description": "**Everything submitted so far, grouped by the page that collected it** \u2014 one call instead of the six per-page reads. Use it to hydrate the whole wizard on entry, and for the review screen.\n\nAdds two things the per-page reads don't have: `nextPage` (the resume page, recalculated now) and `progress.outstandingSteps` (exactly what `complete` enforces)."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No corporate onboarding in progress.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "R2 \u00b7 Preview (flat record)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{onboardingToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "preview"
+              ]
+            },
+            "description": "The same staged record as one flat object, plus a few fields the page endpoints don't surface (`idType`, `idIssue`, `issuingAuthority`, `placeOfIssue`, `mothersMaidenName`, `stateOfOrigin`, `localGovernment`, `address`).\n\nPrefer R1 in new code \u2014 it groups by page and carries the resume page. This one predates it and is kept for existing clients."
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Staged record",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/preview",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "preview"
+                  ]
+                },
+                "description": "The same staged record as one flat object, plus a few fields the page endpoints don't surface (`idType`, `idIssue`, `issuingAuthority`, `placeOfIssue`, `mothersMaidenName`, `stateOfOrigin`, `localGovernment`, `address`).\n\nPrefer R1 in new code \u2014 it groups by page and carries the resume page. This one predates it and is kept for existing clients."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Pending corporate data retrieved successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"email\": \"david@acme.com\",\n    \"emailVerified\": true,\n    \"firstName\": \"David\",\n    \"middleName\": \"Oluwaseun\",\n    \"lastName\": \"Areegbe\",\n    \"phoneNumber\": \"2348012345678\",\n    \"gender\": \"MALE\",\n    \"maskedBvn\": \"*********01\",\n    \"companyName\": \"ACME VENTURES LIMITED\",\n    \"companyType\": \"PRIVATE_COMPANY_LIMITED_BY_SHARES\",\n    \"businessStructure\": \"PRIVATE_CORPORATION\",\n    \"rcNumber\": \"RC1234567\",\n    \"cacVerified\": true,\n    \"registrationDate\": \"2018-04-19T00:00:00Z\",\n    \"classification\": \"COMPANY\",\n    \"companyStatus\": \"ACTIVE\",\n    \"companyEmail\": \"info@acme.com\",\n    \"headOfficeAddress\": \"22 Admiralty Way, Lekki Phase 1\",\n    \"branchAddress\": null,\n    \"addressLine2\": \"Lekki Phase 1\",\n    \"state\": \"Lagos\",\n    \"city\": \"Lagos\",\n    \"lga\": \"Eti-Osa\",\n    \"postCode\": \"100001\",\n    \"country\": \"NG\",\n    \"shareCapital\": 10000000.0,\n    \"shareCapitalInWords\": \"Ten Million Naira\",\n    \"numberOfAffiliates\": 3,\n    \"memartUrl\": \"https://myrtle-bucket.s3.eu-west-1.amazonaws.com/1754661234567_memart.pdf\",\n    \"directors\": [\n      {\n        \"firstName\": \"David\",\n        \"middleName\": \"Oluwaseun\",\n        \"lastName\": \"Areegbe\",\n        \"email\": \"david@acme.com\",\n        \"phoneNumber\": \"2348012345678\",\n        \"maskedBvn\": \"*********01\",\n        \"role\": \"CORP_DIRECTOR\",\n        \"beneficialOwner\": true,\n        \"gender\": \"MALE\",\n        \"title\": \"Mr\",\n        \"addressLine1\": \"22 Admiralty Way\",\n        \"addressLine2\": \"Lekki Phase 1\",\n        \"city\": \"Lagos\",\n        \"state\": \"Lagos\",\n        \"postCode\": \"100001\",\n        \"country\": \"NG\",\n        \"birthDate\": \"1985-03-11\",\n        \"maritalStatus\": \"SINGLE\"\n      }\n    ],\n    \"username\": \"davidareegbe\",\n    \"valuationCurrency\": \"NGN\",\n    \"profession\": \"DIRECTOR\",\n    \"nationality\": \"Nigerian\",\n    \"netWorth\": \"1000000-5000000\",\n    \"annualIncome\": \"1000000-5000000\",\n    \"liquidNetWorth\": \"500000-2000000\",\n    \"sourceOfWealth\": \"Business Income\",\n    \"investmentExperience\": \"MODERATE\",\n    \"riskTolerance\": \"MODERATE\",\n    \"investmentObjective\": \"GROWTH\",\n    \"idType\": null,\n    \"idExpiry\": \"2030-12-31\",\n    \"dateOfBirth\": \"1985-03-11\",\n    \"idIssue\": null,\n    \"issuingAuthority\": null,\n    \"placeOfIssue\": null,\n    \"maritalStatus\": \"SINGLE\",\n    \"title\": \"Mr\",\n    \"mothersMaidenName\": null,\n    \"stateOfOrigin\": null,\n    \"localGovernment\": null,\n    \"employerName\": \"ACME VENTURES LIMITED\",\n    \"employerAddress\": \"22 Admiralty Way, Lekki, Lagos\",\n    \"address\": \"22 Admiralty Way, Lekki Phase 1, Lagos\"\n  }\n}"
+            },
+            {
+              "name": "403 \u00b7 No onboarding token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/preview",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "preview"
+                  ]
+                },
+                "description": "The same staged record as one flat object, plus a few fields the page endpoints don't surface (`idType`, `idIssue`, `issuingAuthority`, `placeOfIssue`, `mothersMaidenName`, `stateOfOrigin`, `localGovernment`, `address`).\n\nPrefer R1 in new code \u2014 it groups by page and carries the resume page. This one predates it and is kept for existing clients."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This step requires the corporate onboarding token returned by the KYC step.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 \u00b7 No onboarding in progress",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{onboardingToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/preview",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "preview"
+                  ]
+                },
+                "description": "The same staged record as one flat object, plus a few fields the page endpoints don't surface (`idType`, `idIssue`, `issuingAuthority`, `placeOfIssue`, `mothersMaidenName`, `stateOfOrigin`, `localGovernment`, `address`).\n\nPrefer R1 in new code \u2014 it groups by page and carries the resume page. This one predates it and is kept for existing clients."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No corporate onboarding in progress.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 \u00b7 Flow B \u2014 Add a login to an existing account",
+      "description": "For each extra person who needs app access. Maximum 5 per company.",
+      "item": [
+        {
+          "name": "B1 \u00b7 Lookup company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/lookup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "lookup"
+              ]
+            },
+            "description": "Public. Finds an existing corporate account by RC number + the BVN registered on it, and issues a **lookup token valid for 15 minutes**.\n\nA mismatch on either half returns the same 404 \u2014 don't reveal which.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\",\n  \"bvn\": \"{{bvn}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/lookup",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "lookup"
+                  ]
+                },
+                "description": "Public. Finds an existing corporate account by RC number + the BVN registered on it, and issues a **lookup token valid for 15 minutes**.\n\nA mismatch on either half returns the same 404 \u2014 don't reveal which.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\",\n  \"bvn\": \"{{bvn}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate account found\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"companyName\": \"ACME VENTURES LIMITED\",\n    \"rcNumber\": \"RC1234567\",\n    \"refCode\": \"MYR-CORP-8842\",\n    \"maskedEmail\": \"d***d@acme.com\",\n    \"existingUsers\": 1,\n    \"maxUsers\": 5,\n    \"lookupToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"lookupTokenExpiresInSeconds\": 900\n  }\n}"
+            },
+            {
+              "name": "404 \u00b7 No match",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/lookup",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "lookup"
+                  ]
+                },
+                "description": "Public. Finds an existing corporate account by RC number + the BVN registered on it, and issues a **lookup token valid for 15 minutes**.\n\nA mismatch on either half returns the same 404 \u2014 don't reveal which.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rcNumber\": \"{{rcNumber}}\",\n  \"bvn\": \"{{bvn}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No corporate account matches that RC number and BVN.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.lookupToken) {",
+                  "    pm.collectionVariables.set('lookupToken', body.data.lookupToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B2 \u00b7 Send OTP to the new user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Public. Sends an OTP to the address of the person being added. Keep `checkifexists: true` so an email already registered anywhere on Myrtle is rejected here rather than at B3.\n\nPaste the code you receive into the `newUserOtp` variable before running B3.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newUserEmail}}\",\n  \"checkifexists\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 OTP sent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/send-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "send-otp"
+                  ]
+                },
+                "description": "Public. Sends an OTP to the address of the person being added. Keep `checkifexists: true` so an email already registered anywhere on Myrtle is rejected here rather than at B3.\n\nPaste the code you receive into the `newUserOtp` variable before running B3.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{newUserEmail}}\",\n  \"checkifexists\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"otpReference\": \"b71f8c2a-3d55-4e10-9a6f-77c1e2b4d8a9\"\n  }\n}"
+            },
+            {
+              "name": "409 \u00b7 Email already registered",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/send-otp",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "send-otp"
+                  ]
+                },
+                "description": "Public. Sends an OTP to the address of the person being added. Keep `checkifexists: true` so an email already registered anywhere on Myrtle is rejected here rather than at B3.\n\nPaste the code you receive into the `newUserOtp` variable before running B3.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{newUserEmail}}\",\n  \"checkifexists\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Account already exists\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.otpReference) {",
+                  "    pm.collectionVariables.set('newUserOtpReference', body.data.otpReference);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B3 \u00b7 Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "create-user"
+              ]
+            },
+            "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 \u00b7 User created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "create-user"
+                  ]
+                },
+                "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Corporate User created successfully\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\"\n  }\n}"
+            },
+            {
+              "name": "400 \u00b7 Invalid OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "create-user"
+                  ]
+                },
+                "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid OTP\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "401 \u00b7 Lookup token expired",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "create-user"
+                  ]
+                },
+                "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid or expired lookup token. Look the corporate account up again to continue.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 \u00b7 Login limit reached",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "create-user"
+                  ]
+                },
+                "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This corporate account already has the maximum of 5 logins. Please email wecare@myrtleng.com to make changes.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "503 \u00b7 BVN verification unavailable (retry is safe)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/create-user",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "create-user"
+                  ]
+                },
+                "description": "Public \u2014 **the lookup token travels in the body**, not the Authorization header.\n\nAdds a login to the company found in B1. Maximum 5 logins per company. The BVN here is this new user's own, not the company representative's. Returns a session token: the new user is logged in.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lookupToken\": \"{{lookupToken}}\",\n  \"refCode\": null,\n  \"rcNumber\": null,\n  \"firstName\": \"Ada\",\n  \"middleName\": null,\n  \"lastName\": \"Obi\",\n  \"emailAddress\": \"{{newUserEmail}}\",\n  \"phoneNumber\": \"2348022222222\",\n  \"password\": \"Password123!\",\n  \"pin\": \"4321\",\n  \"otp\": \"{{newUserOtp}}\",\n  \"otpReference\": \"{{newUserOtpReference}}\",\n  \"bvn\": \"{{newUserBvn}}\",\n  \"address\": \"22 Admiralty Way, Lekki, Lagos\",\n  \"gender\": \"female\",\n  \"isPep\": false,\n  \"pepPosition\": null,\n  \"nextOfKins\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unable to verify BVN at the moment. Please try again later.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.accessToken) {",
+                  "    pm.collectionVariables.set('sessionToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 \u00b7 After onboarding",
+      "description": "Signing in, and what corporate users are blocked from.",
+      "item": [
+        {
+          "name": "Corporate login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/corporate/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "corporate",
+                "login"
+              ]
+            },
+            "description": "Public. Returns a session token plus the account snapshot. Every user of a company shares one investment account and therefore sees the same balances.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailAddress\": \"{{email}}\",\n  \"password\": \"Password123!\",\n  \"ipAddress\": \"102.89.34.12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 \u00b7 Logged in",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "login"
+                  ]
+                },
+                "description": "Public. Returns a session token plus the account snapshot. Every user of a company shares one investment account and therefore sees the same balances.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"emailAddress\": \"{{email}}\",\n  \"password\": \"Password123!\",\n  \"ipAddress\": \"102.89.34.12\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login Successful\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"c0ffee00-1111-2222-3333-444455556666\",\n      \"email\": \"david@acme.com\",\n      \"companyName\": \"ACME VENTURES LIMITED\"\n    },\n    \"isBvnVerified\": true,\n    \"isNinVerified\": false,\n    \"kycCompleted\": true,\n    \"myWealthData\": null,\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"id\": \"c0ffee00-1111-2222-3333-444455556666\",\n    \"email\": \"david@acme.com\",\n    \"role\": \"CORPORATE_ACCOUNT\",\n    \"tier\": 3,\n    \"accountType\": \"CORPORATE_ACCOUNT\"\n  }\n}"
+            },
+            {
+              "name": "400 \u00b7 Wrong password",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "login"
+                  ]
+                },
+                "description": "Public. Returns a session token plus the account snapshot. Every user of a company shares one investment account and therefore sees the same balances.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"emailAddress\": \"{{email}}\",\n  \"password\": \"Password123!\",\n  \"ipAddress\": \"102.89.34.12\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"The credentials provided are invalid. Please verify your details and try again.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 \u00b7 No such account",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/corporate/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "corporate",
+                    "login"
+                  ]
+                },
+                "description": "Public. Returns a session token plus the account snapshot. Every user of a company shares one investment account and therefore sees the same balances.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"emailAddress\": \"{{email}}\",\n  \"password\": \"Password123!\",\n  \"ipAddress\": \"102.89.34.12\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No corporate account was found with the provided email address.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.accessToken) {",
+                  "    pm.collectionVariables.set('sessionToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add withdrawal account (expected 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/add-withdrawal-account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "add-withdrawal-account"
+              ]
+            },
+            "description": "Corporate users cannot move money out. This and the other withdrawal endpoints return 403 with a support address \u2014 hide the controls rather than letting them fail.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankCode\": \"058\",\n  \"accountNumber\": \"0123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "403 \u00b7 Blocked for corporate users",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{sessionToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/payments/add-withdrawal-account",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "payments",
+                    "add-withdrawal-account"
+                  ]
+                },
+                "description": "Corporate users cannot move money out. This and the other withdrawal endpoints return 403 with a support address \u2014 hide the controls rather than letting them fail.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankCode\": \"058\",\n  \"accountNumber\": \"0123456789\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Withdrawal accounts on corporate accounts are managed by our team. Please email wecare@myrtleng.com for assistance.\",\n  \"timestamp\": \"2026-08-20T11:04:22.118\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "david@acme.com",
+      "type": "string"
+    },
+    {
+      "key": "bvn",
+      "value": "12345678901",
+      "type": "string"
+    },
+    {
+      "key": "rcNumber",
+      "value": "RC1234567",
+      "type": "string"
+    },
+    {
+      "key": "otp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otpReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "onboardingToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "memartUrl",
+      "value": "https://example-bucket.s3.eu-west-1.amazonaws.com/memart.pdf",
+      "type": "string"
+    },
+    {
+      "key": "lookupToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newUserEmail",
+      "value": "secretary@acme.com",
+      "type": "string"
+    },
+    {
+      "key": "newUserBvn",
+      "value": "22345678901",
+      "type": "string"
+    },
+    {
+      "key": "newUserOtp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newUserOtpReference",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
